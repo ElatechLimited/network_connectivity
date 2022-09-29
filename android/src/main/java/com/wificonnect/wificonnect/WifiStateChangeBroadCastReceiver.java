@@ -5,16 +5,24 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiManager;
 
-public class WifiStateChangeBroadCastReceiver extends BroadcastReceiver {
+import java.util.function.Function;
 
+public class WifiStateChangeBroadCastReceiver extends BroadcastReceiver {
+    private WifiStateInterphase wifistateinterphase;
+    WifiStateChangeBroadCastReceiver(WifiStateInterphase wifistateinterphase){
+        this.wifistateinterphase=wifistateinterphase;
+    }
     @Override
     public void onReceive(Context context, Intent intent) {
+
             int wifiState=intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,WifiManager.WIFI_STATE_UNKNOWN);
             if(wifiState==WifiManager.WIFI_STATE_ENABLED){
-                System.out.println("wifi enabled");
+                wifistateinterphase.wifiState(true);
+
+
             }
             else{
-                System.out.println("Wifi Disabled");
+                wifistateinterphase.wifiState(false);
             }
 
     }

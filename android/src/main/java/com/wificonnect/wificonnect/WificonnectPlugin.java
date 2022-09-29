@@ -31,7 +31,7 @@ import io.flutter.plugin.common.PluginRegistry;
 
 /** WificonnectPlugin */
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCallHandler, PluginRegistry.RequestPermissionsResultListener, ConnectivityManager.OnNetworkActiveListener {
+public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCallHandler, PluginRegistry.RequestPermissionsResultListener, ConnectivityManager.OnNetworkActiveListener,WifiStateInterphase {
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
@@ -39,7 +39,7 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
   private MethodChannel channel;
   private ActivityPluginBinding binding;
   private Context appContext;
-  private WifiStateChangeBroadCastReceiver receiver=new WifiStateChangeBroadCastReceiver();
+  private WifiStateChangeBroadCastReceiver receiver=new WifiStateChangeBroadCastReceiver(this);
 
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
@@ -168,7 +168,6 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
 
   //check if the device has internet connection
   public static boolean isNetworkAvailable(Context context) {
-
     ConnectivityManager mgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
     NetworkInfo[] info = mgr.getAllNetworkInfo();
     if (info != null) {
@@ -189,5 +188,10 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
       return;
     }
     System.out.println("network is not avalable");
+  }
+
+  @Override
+  public void wifiState(boolean state) {
+    System.out.println(state);
   }
 }
