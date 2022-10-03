@@ -94,6 +94,9 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
       result.success(true);
       return;
     }
+    if(call.method.equals("connectNetwork")){
+      appDataHelper.connectWifi(appContext,call.argument("ssID"),call.argument("bssID"),call.argument("networkPassword"),call.argument("capability"));
+    }
   }
 
 
@@ -123,7 +126,7 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
     this.appContext=binding.getActivity().getApplicationContext();
     binding.addRequestPermissionsResultListener(this);
     registerNetwokChangedListener(appContext);
-    appDataHelper= new AppDataHelper(appContext,binding.getActivity());
+    appDataHelper= new AppDataHelper(appContext,binding.getActivity(),this);
      if(!appDataHelper.checkPermission()){
        appDataHelper.requestPermission();
      }
@@ -191,12 +194,25 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
   }
 
 
+
   @Override
   public void wifiStateChanged(boolean state) {
     HashMap<String, Boolean>data=new HashMap<String, Boolean>();
     data.put("state",state);
     channel.invokeMethod("wifistate",data);
   }
+
+  @Override
+  public void wifiScanningStart() {
+
+  }
+
+  @Override
+  public void wifiScanningStop() {
+
+  }
+
+
 
   @Override
   public void LocationStateChanged(boolean state) {
@@ -208,5 +224,26 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
   public void WifiListChanged(List<ScanResult> avalaibleNetowrk) {
     String val=new Gson().toJson(avalaibleNetowrk,new  TypeToken<List<ScanResult>>() {}.getType());
     channel.invokeMethod("wifilist", Map.of("data",val));
+  }
+
+
+  @Override
+  public void onWifiConnected() {
+   binding.getActivity().runOnUiThread(new Runnable() {
+     @Override
+     public void run() {
+       channel.invokeMethod("onWifiConntected",true);
+     }
+   });
+  }
+
+  @Override
+  public void onWifiConnectionFailed() {
+    binding.getActivity().runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        channel.invokeMethod("onConnectionFailed",true);
+      }
+    });
   }
 }

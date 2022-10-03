@@ -1,5 +1,4 @@
 import 'package:dotted_border/dotted_border.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:wificonnect/wifi_controller.dart';
@@ -54,6 +53,14 @@ class _MyApp extends State<MyApp> {
     }, onWifiListChanged: (List<WifiModel> listData) {
       allAccessPoint = listData;
       setState(() {});
+    }, onWifiConnected: () {
+      connected = true;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Connection Succesful")));
+      setState(() {});
+    }, onWificonnectionFailed: () {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Connection Failed")));
     });
   }
   @override

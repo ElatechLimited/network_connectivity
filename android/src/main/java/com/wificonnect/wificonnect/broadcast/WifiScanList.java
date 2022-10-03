@@ -24,7 +24,7 @@ public class WifiScanList extends BroadcastReceiver {
                 WifiManager.EXTRA_RESULTS_UPDATED, false);
         if(success) {
             results = manager.getScanResults();
-             System.out.println(results);
+            interphase.WifiListChanged(results);
 
         } else {
             results = manager.getScanResults();

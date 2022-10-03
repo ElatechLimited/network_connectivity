@@ -14,9 +14,9 @@ class WifiConnect {
     enableProcess();
   }
 
-  static WifiConnect getInstance({required WifiController controller}) {
+  static WifiConnect getInstance({WifiController? controller}) {
     if (_instance == null) {
-      _instance = WifiConnect._(controller: controller);
+      _instance = WifiConnect._(controller: controller!);
       return _instance!;
     }
     return _instance!;
@@ -28,6 +28,17 @@ class WifiConnect {
 
   Future<void> enableProcess() async {
     return await _channel.invokeMethod("enableprocess");
+  }
+
+  Future<void> connectToNetwork(String ssID, String bssID,
+      String networkPassword, String capability) async {
+    await _channel.invokeMethod("connectNetwork", {
+      "ssID": ssID,
+      "bssID": bssID,
+      "networkPassword": networkPassword,
+      "capability": capability
+    });
+    return;
   }
 
   Future<bool> enabledLocation() async {
@@ -67,10 +78,15 @@ class WifiConnect {
         return;
       }
       if (call.method == "wifilist") {
-        print(call.arguments['data']);
         List<WifiModel> value = wifiModelFromJson(call.arguments['data']);
         controller.onWifiListChanged(value);
         return;
+      }
+      if (call.method == "onWifiConntected") {
+        controller.onWifiConnected();
+      }
+      if (call.method == "onConnectionFailed") {
+        controller.onWificonnectionFailed();
       }
 
       return;

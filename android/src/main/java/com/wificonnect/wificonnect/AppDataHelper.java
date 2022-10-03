@@ -7,26 +7,38 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
+import android.net.MacAddress;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiNetworkSuggestion;
 import android.os.Build;
+import android.os.Bundle;
 import android.provider.Settings;
 
 import androidx.annotation.RequiresApi;
 
+import com.wificonnect.wificonnect.interphase.Notifier;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class AppDataHelper {
    private Context context;
    private Activity instance;
-   private Timer timer=new java.util.Timer();
+   private Notifier notifier;
+   private Timer timer1=new java.util.Timer();
+    private Timer timer2=new java.util.Timer();
    public boolean enabledProcess=false;
+   private int retrying=0;
 
-
-   AppDataHelper(Context context, Activity instance){
+   AppDataHelper(Context context, Activity instance,Notifier notifier){
        this.context=context;
        this.instance=instance;
+       this.notifier=notifier;
    }
     //check permission
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -49,10 +61,9 @@ public class AppDataHelper {
 
     public void scanWifi(Context context){
        if(!enabledProcess){
-           timer.cancel();
+           timer1.cancel();
            return;
        }
-       timer=new java.util.Timer();
      if(!isWifiEnabled(context)){
          return;
      }
@@ -60,8 +71,11 @@ public class AppDataHelper {
          enableLocation(context);
          return;
      }
-     WifiManager wifi = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        timer.schedule(
+        timer2.cancel();
+        timer1=new java.util.Timer();
+         notifier.wifiScanningStart();
+        WifiManager wifi = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        timer1.schedule(
                 new java.util.TimerTask() {
                     @Override
                     public void run() {
@@ -99,6 +113,64 @@ public class AppDataHelper {
          }
      }
 
+
+     public void connectWifi(Context context,String ssID,String bssID,String networkPass,String capability){
+         timer1.cancel();
+         timer2=new java.util.Timer();
+         notifier.wifiScanningStop();
+         timer2.schedule(
+                 new java.util.TimerTask() {
+                     @Override
+                     public void run() {
+                       if(isWifiConnected(context)){
+                           retrying=0;
+                           timer2.cancel();
+                            notifier.onWifiConnected();
+                            return;
+                       }
+                       if(retrying==2){
+                           timer2.cancel();
+                           retrying=0;
+                           notifier.onWifiConnectionFailed();
+                       }
+                       retrying++;
+
+                     }
+                 }, 4000,5000
+         );
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+             final WifiNetworkSuggestion.Builder suggestion =
+                     new WifiNetworkSuggestion.Builder();
+
+             suggestion.setSsid(ssID);
+             suggestion.setBssid(MacAddress.fromString(bssID));
+             suggestion.setIsAppInteractionRequired(true) ;
+             suggestion.build();
+
+             if(capability.contains("WPA")){
+                 suggestion.setWpa2Passphrase(networkPass);
+             }
+        final ArrayList<WifiNetworkSuggestion> suggestionsList =
+                     new ArrayList<WifiNetworkSuggestion>();
+            suggestionsList.add(suggestion.build());
+             //WifiManager wifiManager = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+            //wifiManager.removeNetworkSuggestions(suggestionsList);
+            // wifiManager.addNetworkSuggestions(suggestionsList);
+             Bundle bundle=new Bundle();
+             bundle.putParcelableArrayList(Settings.EXTRA_WIFI_NETWORK_LIST,suggestionsList);
+             Intent intent=new Intent(Settings.ACTION_WIFI_ADD_NETWORKS);
+
+             intent.putExtras(bundle);
+             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+             context.startActivity(intent);
+
+         }
+
+         else{
+             android.net.wifi.WifiConfiguration conf = generateConfiguration(ssID, bssID, networkPass, capability, false);
+             int updateNetwork = registerWifiNetworkDeprecated(conf);
+         }
+     }
      public void enableWifi(Context context){
        if(isWifiEnabled(context)){
            return;
@@ -114,13 +186,19 @@ public class AppDataHelper {
      }
 
      // check if the wifi is connected to a hotspot or not
-     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+
      public   boolean isWifiConnected(Context context) {
-         ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+       if(Build.VERSION.SDK_INT<Build.VERSION_CODES.M){
+           ConnectivityManager connManager =
+                   (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+           android.net.NetworkInfo mWifi =
+                   connManager != null ? connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI) : null;
+
+           return  mWifi != null && mWifi.isConnected();
+       }       ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
          NetworkInfo info = manager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
          info.getState();
          return info != null && info.isConnected() && info.isAvailable();
-
      }
      //check if the device has internet connection
      public static boolean isNetworkAvailable(Context context) {
@@ -135,5 +213,91 @@ public class AppDataHelper {
          }
          return false;
      }
+
+
+
+    private android.net.wifi.WifiConfiguration generateConfiguration(
+            String ssid, String bssid, String password, String security, Boolean isHidden) {
+        android.net.wifi.WifiConfiguration conf = new android.net.wifi.WifiConfiguration();
+        conf.SSID = "\"" + ssid + "\"";
+        conf.hiddenSSID = isHidden != null ? isHidden : false;
+        if (bssid != null) {
+            conf.BSSID = bssid;
+        }
+
+        if (security != null) security = security.toUpperCase();
+        else security = "NONE";
+
+        if (security.toUpperCase().equals("WPA")) {
+
+            /// appropriate ciper is need to set according to security type used,
+            /// ifcase of not added it will not be able to connect
+            conf.preSharedKey = "\"" + password + "\"";
+
+            conf.allowedProtocols.set(android.net.wifi.WifiConfiguration.Protocol.RSN);
+
+            conf.allowedKeyManagement.set(android.net.wifi.WifiConfiguration.KeyMgmt.WPA_PSK);
+
+            conf.status = android.net.wifi.WifiConfiguration.Status.ENABLED;
+
+            conf.allowedGroupCiphers.set(android.net.wifi.WifiConfiguration.GroupCipher.TKIP);
+            conf.allowedGroupCiphers.set(android.net.wifi.WifiConfiguration.GroupCipher.CCMP);
+
+            conf.allowedKeyManagement.set(android.net.wifi.WifiConfiguration.KeyMgmt.WPA_PSK);
+
+            conf.allowedPairwiseCiphers.set(android.net.wifi.WifiConfiguration.PairwiseCipher.TKIP);
+            conf.allowedPairwiseCiphers.set(android.net.wifi.WifiConfiguration.PairwiseCipher.CCMP);
+
+            conf.allowedProtocols.set(android.net.wifi.WifiConfiguration.Protocol.RSN);
+            conf.allowedProtocols.set(android.net.wifi.WifiConfiguration.Protocol.WPA);
+        } else if (security.equals("WEP")) {
+            conf.wepKeys[0] = "\"" + password + "\"";
+            conf.wepTxKeyIndex = 0;
+            conf.allowedKeyManagement.set(android.net.wifi.WifiConfiguration.KeyMgmt.NONE);
+            conf.allowedGroupCiphers.set(android.net.wifi.WifiConfiguration.GroupCipher.WEP40);
+        } else {
+            conf.allowedKeyManagement.set(android.net.wifi.WifiConfiguration.KeyMgmt.NONE);
+        }
+
+        return conf;
+    }
+
+
+    private int registerWifiNetworkDeprecated(android.net.wifi.WifiConfiguration conf) {
+        int updateNetwork = -1;
+        int registeredNetwork = -1;
+        WifiManager manager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        /// Remove the existing configuration for this netwrok
+        List<android.net.wifi.WifiConfiguration> mWifiConfigList = manager.getConfiguredNetworks();
+
+        if (mWifiConfigList != null) {
+            for (android.net.wifi.WifiConfiguration wifiConfig : mWifiConfigList) {
+                if (wifiConfig.SSID.equals(conf.SSID)
+                        && (wifiConfig.BSSID == null
+                        || conf.BSSID == null
+                        || wifiConfig.BSSID.equals(conf.BSSID))) {
+                    conf.networkId = wifiConfig.networkId;
+                    registeredNetwork = wifiConfig.networkId;
+                    updateNetwork = manager.updateNetwork(conf);
+                }
+            }
+        }
+
+        /// If network not already in configured networks add new network
+        if (updateNetwork == -1) {
+            updateNetwork = manager.addNetwork(conf);
+            manager.saveConfiguration();
+        }
+
+        // Try returning last known valid network id
+        if (updateNetwork == -1) {
+            return registeredNetwork;
+        }
+
+        return updateNetwork;
+    }
+
+
+
 
 }
