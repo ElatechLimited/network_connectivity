@@ -23,6 +23,7 @@ import com.wificonnect.wificonnect.interphase.Notifier;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -199,16 +200,33 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
   public void wifiStateChanged(boolean state) {
     HashMap<String, Boolean>data=new HashMap<String, Boolean>();
     data.put("state",state);
-    channel.invokeMethod("wifistate",data);
-  }
 
-  @Override
-  public void wifiScanningStart() {
 
-  }
 
-  @Override
-  public void wifiScanningStop() {
+
+    new Timer().schedule(
+            new java.util.TimerTask() {
+              @Override
+              public void run() {
+               binding.getActivity().runOnUiThread(new Runnable() {
+                 @Override
+                 public void run() {
+                   if(appDataHelper.isWifiConnected(appContext)){
+                     channel.invokeMethod("onWifiConntected",true);
+                   }
+
+                   channel.invokeMethod("wifistate",data);
+                 }
+               });
+              }
+            }, 3000
+    );
+   binding.getActivity().runOnUiThread(new Runnable() {
+     @Override
+     public void run() {
+       channel.invokeMethod("wifistate",data);
+     }
+   });
 
   }
 
@@ -219,6 +237,7 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
     HashMap<String, Boolean>data=new HashMap<String, Boolean>();
     data.put("state",state);
     channel.invokeMethod("locationState",data);
+
   }
   @Override
   public void WifiListChanged(List<ScanResult> avalaibleNetowrk) {
@@ -246,4 +265,26 @@ public class WificonnectPlugin implements FlutterPlugin, ActivityAware, MethodCa
       }
     });
   }
+
+
+  @Override
+  public void wifiScanningStart() {
+    binding.getActivity().runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        channel.invokeMethod("onWifiScanningStart",true);
+      }
+    });
+  }
+
+  @Override
+  public void wifiScanningStop() {
+    binding.getActivity().runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        channel.invokeMethod("onWifiScanningStopped",true);
+      }
+    });
+  }
+
 }

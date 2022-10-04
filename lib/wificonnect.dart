@@ -68,6 +68,8 @@ class WifiConnect {
         var state = call.arguments['state'];
         if (state) {
           scanNetwork();
+        } else {
+          controller.onWifiListChanged([]);
         }
         controller.wifiStateChanged(state);
         return;
@@ -75,6 +77,9 @@ class WifiConnect {
       if (call.method == "locationState") {
         var state = call.arguments['state'];
         controller.locationStateChanged(state);
+        if (!state) {
+          controller.onWifiListChanged([]);
+        }
         return;
       }
       if (call.method == "wifilist") {
@@ -89,6 +94,13 @@ class WifiConnect {
         controller.onWificonnectionFailed();
       }
 
+      if (call.method == "onWifiScanningStart") {
+        controller.onWifiScanningStart();
+      }
+
+      if (call.method == "") {
+        controller.onWifiScanningStopped();
+      }
       return;
     });
   }

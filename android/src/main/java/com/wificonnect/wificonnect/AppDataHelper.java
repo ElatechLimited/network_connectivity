@@ -72,14 +72,25 @@ public class AppDataHelper {
          return;
      }
         timer2.cancel();
+
         timer1=new java.util.Timer();
          notifier.wifiScanningStart();
+
         WifiManager wifi = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+
         timer1.schedule(
                 new java.util.TimerTask() {
                     @Override
                     public void run() {
-                    wifi.startScan();
+                    if(!isWifiEnabled(context)){
+                      notifier.wifiStateChanged(false);
+                            notifier.wifiStateChanged(false);
+                            timer1.cancel();
+                            this.cancel();
+                            timer1.purge();
+
+                    }
+                        wifi.startScan();
                     }
                 }, 0,5000
         );
@@ -116,6 +127,8 @@ public class AppDataHelper {
 
      public void connectWifi(Context context,String ssID,String bssID,String networkPass,String capability){
          timer1.cancel();
+         timer1.purge();
+         timer1=new java.util.Timer();
          timer2=new java.util.Timer();
          notifier.wifiScanningStop();
          timer2.schedule(
@@ -125,11 +138,15 @@ public class AppDataHelper {
                        if(isWifiConnected(context)){
                            retrying=0;
                            timer2.cancel();
+                           timer2.purge();
+                            this.cancel();
                             notifier.onWifiConnected();
                             return;
                        }
                        if(retrying==2){
                            timer2.cancel();
+                           timer2.purge();
+                           timer2=new java.util.Timer();
                            retrying=0;
                            notifier.onWifiConnectionFailed();
                        }

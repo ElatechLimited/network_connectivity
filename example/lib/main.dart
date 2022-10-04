@@ -38,30 +38,38 @@ class _MyApp extends State<MyApp> {
   late final WifiController controller;
 
   _MyApp() {
-    controller = WifiController(wifiStateChanged: (state) {
-      if (state) {
-        wifiNotifier.value = 2;
-        return;
-      }
-      wifiNotifier.value = 0;
-    }, locationStateChanged: (state) {
-      if (state) {
-        gpsNotifier.value = 2;
-        return;
-      }
-      gpsNotifier.value = 0;
-    }, onWifiListChanged: (List<WifiModel> listData) {
-      allAccessPoint = listData;
-      setState(() {});
-    }, onWifiConnected: () {
-      connected = true;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Connection Succesful")));
-      setState(() {});
-    }, onWificonnectionFailed: () {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Connection Failed")));
-    });
+    controller = WifiController(
+        wifiStateChanged: (state) {
+          if (state) {
+            wifiNotifier.value = 2;
+            return;
+          }
+          connected = state;
+          wifiNotifier.value = 0;
+        },
+        locationStateChanged: (state) {
+          if (state) {
+            gpsNotifier.value = 2;
+            return;
+          }
+          gpsNotifier.value = 0;
+        },
+        onWifiListChanged: (List<WifiModel> listData) {
+          allAccessPoint = listData;
+          setState(() {});
+        },
+        onWifiConnected: () {
+          connected = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Connection Succesful")));
+          setState(() {});
+        },
+        onWificonnectionFailed: () {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text("Connection Failed")));
+        },
+        onWifiScanningStart: () {},
+        onWifiScanningStopped: () {});
   }
   @override
   void initState() {
